@@ -1,8 +1,37 @@
-/*
-$.post('ajax/test.html', {dataToServer:"example"}, function(data) {
-	
+//stats https://github.com/mrdoob/stats.js
+var stats = new Stats();
+stats.domElement.style.position = 'absolute';
+stats.domElement.style.right = '0px';
+stats.domElement.style.top = '0px';
+document.body.appendChild( stats.domElement );
+
+
+//requestAnimationShim http://paulirish.com/2011/requestanimationframe-for-smart-animating/
+window.requestAnimFrame = (function(){
+	return  window.requestAnimationFrame       || 
+			window.webkitRequestAnimationFrame || 
+			window.mozRequestAnimationFrame    || 
+			window.oRequestAnimationFrame      || 
+			window.msRequestAnimationFrame     || 
+			function( callback ){
+				window.setTimeout(callback, 1000 / 60);
+			};
+})();
+
+
+
+var socket = io.connect('http://localhost');
+socket.on('news', function (data) {
+	console.log(data);
+	socket.emit('my other event', { my: 'data' });
 });
-*/
+
+
+
+
+
+
+// ---
 
 //---- Player class
 
@@ -63,9 +92,10 @@ function Game() {
 	];
 	this.myTeam = 1;
 	this.caseSize = 60;
-	this.actionsLeftMax = 100;
+	this.actionsLeftMax = 10;
 	this.turnsAloneMax = 6; //For flag
 	this.teamTurn = -1;
+	this.AIplaying = false;
 };
 
 Game.prototype.init = function() {
@@ -110,43 +140,6 @@ Game.prototype.isNextTurn = function() {
 	return true;
 }
 
-Game.prototype.drawBg = function(ctx) {
-	for(var i in this.map) {
-		for(var j in this.map[i]) {
-			switch(this.map[i][j]) {
-				case 1:
-					ctx.drawImage(img['bloc'], this.caseSize*j, this.caseSize*i, this.caseSize, this.caseSize);
-					break;
-				case 2:
-					ctx.drawImage(img['spawn'], this.caseSize*j, this.caseSize*i, this.caseSize, this.caseSize);
-					break;
-				default:
-					ctx.drawImage(img['void'], this.caseSize*j, this.caseSize*i, this.caseSize, this.caseSize);
-			}
-		}
-	}
-};
-
-Game.prototype.drawFg = function(ctx) {
-	for(var i in this.flags) {
-		this.flags[i].draw(ctx, this.caseSize);
-	}
-	for(var i in this.players) {
-		ctx.drawImage(img['perso'+this.players[i].direction], this.caseSize*this.players[i].x, this.caseSize*this.players[i].y, this.caseSize, this.caseSize);
-		if(this.players[i].team == this.myTeam) {
-			ctx.beginPath();
-			ctx.arc((this.players[i].x+0.5)*this.caseSize, (this.players[i].y+0.5)*this.caseSize, 30, 0 , 2 * Math.PI, false);
-			ctx.lineWidth = 2;
-			ctx.strokeStyle = '#CCC';
-			ctx.stroke();
-		}
-		if(this.players[i].flag) {
-			smallFont();
-			ctx.fillText('F', this.caseSize*(this.players[i].x+0.8), this.caseSize*(this.players[i].y+0.2));
-		}
-	}
-	
-};
 
 Game.prototype.getObject = function(x, y) {
 	for(var i in this.players) {
@@ -215,11 +208,18 @@ Game.prototype.move = function(id, dx, dy) {
 };
 
 Game.prototype.IA = function() {
-	for(var i in this.players) {
-		if(this.players[i].team == this.teamTurn) {
-			var mvt = this.mouvement[Math.floor(Math.random()*4)];
-			this.move(this.players[i].id, mvt.x, mvt.y);
+	if(!this.AIplaying) {
+		this.AIplaying = true;
+	
+		for(var i in this.players) {
+			if(this.players[i].team == this.teamTurn && this.players[i].team != this.myTeam) {
+				var mvt = this.mouvement[Math.floor(Math.random()*4)];
+				this.move(this.players[i].id, mvt.x, mvt.y);
+			}
 		}
+		console.log("played");
+		var self = this;
+		setTimeout(function() {self.AIplaying = false;}, 300+Math.floor(Math.random()*500));
 	}
 }
 
@@ -261,6 +261,43 @@ Interface.prototype.click = function(xsource, ysource) {
 			}
 			break;
 		default:
+	}
+};
+
+Interface.prototype.drawBackground = function(ctx) {
+	for(var i in this.game.map) {
+		for(var j in this.game.map[i]) {
+			switch(this.game.map[i][j]) {
+				case 1:
+					ctx.drawImage(img['bloc'], this.game.caseSize*j, this.game.caseSize*i, this.game.caseSize, this.game.caseSize);
+					break;
+				case 2:
+					ctx.drawImage(img['spawn'], this.game.caseSize*j, this.game.caseSize*i, this.game.caseSize, this.game.caseSize);
+					break;
+				default:
+					ctx.drawImage(img['void'], this.game.caseSize*j, this.game.caseSize*i, this.game.caseSize, this.game.caseSize);
+			}
+		}
+	}
+};
+
+Interface.prototype.drawForeground = function(ctx) {
+	for(var i in this.game.flags) {
+		this.game.flags[i].draw(ctx, this.game.caseSize);
+	}
+	for(var i in this.game.players) {
+		ctx.drawImage(img['perso'+this.game.players[i].direction], this.game.caseSize*this.game.players[i].x, this.game.caseSize*this.game.players[i].y, this.game.caseSize, this.game.caseSize);
+		if(this.game.players[i].team == this.game.myTeam) {
+			ctx.beginPath();
+			ctx.arc((this.game.players[i].x+0.5)*this.game.caseSize, (this.game.players[i].y+0.5)*this.game.caseSize, 30, 0 , 2 * Math.PI, false);
+			ctx.lineWidth = 2;
+			ctx.strokeStyle = '#CCC';
+			ctx.stroke();
+		}
+		if(this.game.players[i].flag) {
+			smallFont();
+			ctx.fillText('F', this.game.caseSize*(this.game.players[i].x+0.8), this.game.caseSize*(this.game.players[i].y+0.2));
+		}
 	}
 };
 
@@ -384,8 +421,8 @@ function render() {
 	}
 	ctx.clearRect(0, 0, can.width, can.height);
 	stats.begin();
-	game.drawBg(ctx);
-	game.drawFg(ctx);
+	inter.drawBackground(ctx);
+	inter.drawForeground(ctx);
 	inter.drawOverlay(ctx);
 	stats.end();
 };
@@ -394,3 +431,10 @@ function render() {
   requestAnimFrame(animloop);
   render();
 })();
+
+
+
+$('#myCanvas').click(function(e) {
+	inter.click(e.offsetX, e.offsetY);
+});
+

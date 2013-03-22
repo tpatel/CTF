@@ -99,4 +99,4 @@ var m = new Map();
 //m.initMask();
 m.display();
 
-m.displayPosition(4,5, 5);
+m.displayPosition(5,4, 5);
