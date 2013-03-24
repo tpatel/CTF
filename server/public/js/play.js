@@ -1,3 +1,8 @@
+var can = document.getElementById('myCanvas');
+var ctx = can.getContext('2d');
+
+var inter = (function(ctx, can){
+
 //stats https://github.com/mrdoob/stats.js
 var stats = new Stats();
 stats.domElement.style.position = 'absolute';
@@ -123,7 +128,7 @@ Game.prototype.initMask = function() {
 	}
 	for(var j in this.players) {
 		if(this.players[j].team == this.myTeam) {
-			this.displayPosition(this.players[j].x, this.players[j].y, 3);
+			this.displayPosition(this.players[j].x, this.players[j].y, 5);
 		}
 	}
 	this.displayPosition(this.flags[this.myTeam].xspawn, this.flags[this.myTeam].yspawn, 2);
@@ -462,8 +467,7 @@ var game = new Game();
 game.init();
 var inter = new Interface(game);
 
-var can = document.getElementById('myCanvas');
-var ctx = can.getContext('2d');
+
 ctx.textAlign='center';
 ctx.textBaseline='middle';
 
@@ -493,9 +497,12 @@ function render() {
   render();
 })();
 
+return function(x, y) {inter.click(x,y)};
+
+})(ctx, can);
 
 
 $('#myCanvas').click(function(e) {
-	inter.click(e.offsetX, e.offsetY);
+	inter(e.offsetX, e.offsetY);
 });
 

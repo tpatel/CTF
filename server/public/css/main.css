@@ -162,12 +162,9 @@ h1 {
 	margin-bottom:0.4em;
 }
 
-#gamePlace {
-	border: solid 1px black;
-}
-
 #myCanvas {
 	background-color:#999;
+	border: solid 1px black;
 }
 
 
