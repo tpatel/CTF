@@ -92,8 +92,8 @@ Game.prototype.init = function() {
 		this.mask[i] = new Array(this.map[i].length);
 	}
 
-	this.players.push(new Player(2, 0, 4, 2, 'D'));
-	this.players.push(new Player(3, 0, 2, 5, 'R'));
+	this.players.push(new Player(2, 0, 3, 2, 'D'));
+	this.players.push(new Player(3, 0, 2, 3, 'R'));
 	this.players.push(new Player(1, 1, 13, 5, 'L'));
 	this.players.push(new Player(42, 1, 8, 8, 'U'));
 	
@@ -230,7 +230,7 @@ Game.prototype.pickFlag = function(player) {
 	}
 };
 
-Game.prototype.move = function(id, dx, dy) {
+Game.prototype.move = function(id, dx, dy, broadcast) {
 	for(var i in this.players) {
 		if(this.players[i].id == id && this.players[i].actionsLeft > 0) {
 			var nx = this.players[i].x + dx;
@@ -252,7 +252,9 @@ Game.prototype.move = function(id, dx, dy) {
 				this.players[i].actionsLeft--;
 				if(this.isNextTurn()) this.nextTurn();
 				
-				socket.emit('action', {game:game});
+				if(broadcast) {
+					socket.emit('move', {id:this.players[i].id, dx:dx, dy:dy});
+				}
 				
 				return true;
 			}
@@ -282,7 +284,7 @@ Interface.prototype.click = function(source) {
 		case this.MY_PLAYER_SELECTED:
 			console.log('distance',Math.abs(x-this.model.x)+Math.abs(y-this.model.y));
 			if(Math.abs(x-this.model.x)+Math.abs(y-this.model.y) <= 1) {
-				if(this.game.move(this.model.id, x-this.model.x, y-this.model.y))
+				if(this.game.move(this.model.id, x-this.model.x, y-this.model.y, true))
 					break;
 			}
 			//No break here
@@ -514,12 +516,13 @@ var socket = io.connect('http://localhost');
 socket.on('init', function (data) {
 	console.log(data);
 	game.applyGame(data.game);
+	game.initMask();
 	/*game.map = data.map;
 	game.init();*/
 	//socket.emit('my other event', { my: 'data' });
 });
-socket.on('action', function(data) {
-	game.applyGame(data.game);
+socket.on('move', function(data) {
+	game.move(data.id, data.dx, data.dy);
 });
 
 

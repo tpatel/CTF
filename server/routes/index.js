@@ -25,7 +25,7 @@ exports.setio = function(io) {
 		/*socket.on('my other event', function (data) {
 			console.log(data);
 		});*/
-		socket.on('action', function (data) {
+		socket.on('move', function (data) {
 			action(io, socket, data);
 		});
 	});
@@ -43,7 +43,7 @@ function init(io, socket) {
 				roomID = utils.uid(5);
 			}
 			clients[clientID].room = roomID;
-			rooms[roomID] = {p1:socket.id, p2:null, game:null};
+			rooms[roomID] = {p1:clientID, p2:null, game:null};
 			socket.join(roomID);
 			newClients.push(clientID);
 		} else {
@@ -60,11 +60,17 @@ function init(io, socket) {
 			game.init();
 			room.game = game;
 			//console.log(io.sockets.clients(roomID));
-			io.sockets.in(roomID).emit('init', room);
+			room.game.myTeam = 0;
+			clients[room.p1].socket.emit('init', room);
+			room.game.myTeam = 1;
+			clients[room.p2].socket.emit('init', room);
+			//io.sockets.in(roomID).emit('init', room);
 		}
 	} else {
 		var room = rooms[clients[clientID].room];
 		if(room.game) {
+			var myTeam = room.p1 == clientID ? 0 : 1;
+			room.game.myTeam = myTeam;
 			socket.emit('init', room);
 		}
 	}
@@ -77,8 +83,10 @@ function action(io, socket, data) {
 	
 	var game = room.game;
 	
-	game.applyGame(data.game);
+	game.move(data.id, data.dx, data.dy);
 	
-	io.sockets.in(roomID).emit('action', room);
+	//FIXME: need to valide user input !!!
+	
+	socket.broadcast.to(roomID).emit('move', data);
 	
 }
