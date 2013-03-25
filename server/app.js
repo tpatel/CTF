@@ -17,10 +17,16 @@ var express = require('express')
   , MemoryStore = express.session.MemoryStore
   , sessionStore = new MemoryStore();
 
+var toobusy = require('toobusy');
+
 app.configure(function(){
   app.set('port', process.env.PORT || 3000);
   app.set('views', __dirname + '/views');
   app.set('view engine', 'ejs');
+  app.use(function(req, res, next) {
+    if (toobusy()) res.send(503, "I'm busy right now, sorry.");
+    else next();
+  });
   app.use(express.favicon());
   app.use(express.logger('dev'));
   app.use(express.bodyParser());
