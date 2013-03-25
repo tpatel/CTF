@@ -56,7 +56,7 @@ io.set('authorization', function (data, accept) {
 			} else {
 				if(session && session.user) {
 					data.session = session; //Accept the session
-					console.log(session);
+					//console.log(session);
 					return accept(null, true);
 				} else {
 					return accept('Not authenticated', false);

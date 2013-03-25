@@ -1,7 +1,7 @@
 var can = document.getElementById('myCanvas');
-var ctx = can.getContext('2d');
 
-var inter = (function(ctx, can){
+(function(can){
+var ctx = can.getContext('2d');
 
 //stats https://github.com/mrdoob/stats.js
 var stats = new Stats();
@@ -22,15 +22,6 @@ window.requestAnimFrame = (function(){
 				window.setTimeout(callback, 1000 / 60);
 			};
 })();
-
-
-
-var socket = io.connect('http://localhost');
-socket.on('news', function (data) {
-	console.log(data);
-	socket.emit('my other event', { my: 'data' });
-});
-
 
 //---- Player class
 
@@ -66,20 +57,9 @@ function Game() {
 	this.players = [];
 	this.flags = [];
 	this.teams = [];
-	this.map = [
-		[2,0,0,0,0,0,1,0,0,0,0,0,0,0],
-		[0,3,1,0,0,0,1,0,0,0,0,0,0,0],
-		[0,1,1,0,0,0,0,0,0,0,1,0,1,1],
-		[0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-		[0,0,0,0,0,0,1,1,0,0,0,0,0,0],
-		[0,0,0,0,0,1,1,0,0,0,0,0,0,0],
-		[0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-		[1,1,0,1,0,0,0,0,0,0,0,1,1,0],
-		[0,0,0,0,0,0,1,0,0,0,0,1,3,0],
-		[0,0,0,0,0,0,1,0,0,0,0,0,0,2]
-	];
-	this.width = this.map[0].length;
-	this.height = this.map.length;
+	this.map = null;
+	this.width = 0;
+	this.height = 0;
 	this.mouvement = [
 		{x:1, y:0},
 		{x:-1, y:0},
@@ -92,14 +72,26 @@ function Game() {
 	this.turnsAloneMax = 6; //For flag
 	this.teamTurn = -1;
 	this.AIplaying = false;
+	this.mask = null;
 	
-	this.mask = new Array(this.map.length);
-	for(var i=0;i<this.mask.length;i++) {
-		this.mask[i] = new Array(this.map[i].length);
+	this.initialized = false;
+};
+
+Game.prototype.applyGame = function(game) {
+	for(var i in game) {
+		this[i] = game[i];
 	}
 };
 
 Game.prototype.init = function() {
+	this.width = this.map[0].length;
+	this.height = this.map.length;
+
+	this.mask = new Array(this.map.length);
+	for(var i=0;i<this.mask.length;i++) {
+		this.mask[i] = new Array(this.map[i].length);
+	}
+
 	this.players.push(new Player(2, 0, 4, 2, 'D'));
 	this.players.push(new Player(3, 0, 2, 5, 'R'));
 	this.players.push(new Player(1, 1, 13, 5, 'L'));
@@ -118,6 +110,7 @@ Game.prototype.init = function() {
 	this.nextTurn();
 	
 	//this.flags.push(null);
+	this.initialized = true;
 };
 
 Game.prototype.initMask = function() {
@@ -128,7 +121,7 @@ Game.prototype.initMask = function() {
 	}
 	for(var j in this.players) {
 		if(this.players[j].team == this.myTeam) {
-			this.displayPosition(this.players[j].x, this.players[j].y, 5);
+			this.displayPosition(this.players[j].x, this.players[j].y, 3);
 		}
 	}
 	this.displayPosition(this.flags[this.myTeam].xspawn, this.flags[this.myTeam].yspawn, 2);
@@ -139,7 +132,7 @@ Game.prototype.displayPosition = function(x, y, size) {
 	var imax = Math.min(this.height-1,y+size);
 	var jmin = Math.max(0,x-size);
 	var jmax = Math.min(this.width-1,x+size);
-	
+
 	for(var i=imin; i<=imax; i++) {
 		for(var j=jmin; j<=jmax; j++) {
 			var dx = Math.abs(x-j);
@@ -151,7 +144,7 @@ Game.prototype.displayPosition = function(x, y, size) {
 				if(y >= i) sy = -1;
 				if(x >= j) sx = -1;
 				var err = dx-dy;
-				
+			
 				this.mask[y0][x0] = 1;
 				while((y0 != i || x0 != j)
 						&& (this.map[y0][x0] != 1)) {
@@ -164,7 +157,7 @@ Game.prototype.displayPosition = function(x, y, size) {
 						err += dx;
 						y0 += sy;
 					}
-					
+				
 					this.mask[y0][x0] = 1;
 				}
 			}
@@ -249,15 +242,17 @@ Game.prototype.move = function(id, dx, dy) {
 				else if(dx>0) this.players[i].direction = 'R';
 				else if(dy<0) this.players[i].direction = 'U';
 				else this.players[i].direction = 'D';
-				
+			
 				if(this.players[i].team == this.myTeam) {
 					this.initMask();
 				}
-				
+			
 				this.pickFlag(this.players[i]); //always tries to pick flag
-				
+			
 				this.players[i].actionsLeft--;
 				if(this.isNextTurn()) this.nextTurn();
+				
+				socket.emit('action', {game:game});
 				
 				return true;
 			}
@@ -265,22 +260,6 @@ Game.prototype.move = function(id, dx, dy) {
 	}
 	return false;
 };
-
-Game.prototype.IA = function() {
-	if(!this.AIplaying) {
-		this.AIplaying = true;
-	
-		for(var i in this.players) {
-			if(this.players[i].team == this.teamTurn && this.players[i].team != this.myTeam) {
-				var mvt = this.mouvement[Math.floor(Math.random()*4)];
-				this.move(this.players[i].id, mvt.x, mvt.y);
-			}
-		}
-		console.log("played");
-		var self = this;
-		setTimeout(function() {self.AIplaying = false;}, 15);
-	}
-}
 
 //---- Interface class
 
@@ -295,12 +274,13 @@ function Interface(game) {
 	this.model = null;
 };
 
-Interface.prototype.click = function(xsource, ysource) {
-	var x = Math.floor(xsource/this.game.caseSize);
-	var y = Math.floor(ysource/this.game.caseSize);
+Interface.prototype.click = function(source) {
+	var x = Math.floor(source.x/this.game.caseSize);
+	var y = Math.floor(source.y/this.game.caseSize);
 	
 	switch(this.state) {
 		case this.MY_PLAYER_SELECTED:
+			console.log('distance',Math.abs(x-this.model.x)+Math.abs(y-this.model.y));
 			if(Math.abs(x-this.model.x)+Math.abs(y-this.model.y) <= 1) {
 				if(this.game.move(this.model.id, x-this.model.x, y-this.model.y))
 					break;
@@ -309,9 +289,10 @@ Interface.prototype.click = function(xsource, ysource) {
 		case this.NOTHING: case this.OBJECT_SELECTED:
 			this.model = game.getObject(x, y);
 			if(this.model) {
-				if(this.model instanceof Player
+				if(this.model.team != null//this.model instanceof Player
 						&& this.model.team == this.game.myTeam) {
 					this.state = this.MY_PLAYER_SELECTED;
+					console.log('my player');
 				} else {
 					this.state = this.OBJECT_SELECTED;
 				}
@@ -326,7 +307,6 @@ Interface.prototype.click = function(xsource, ysource) {
 Interface.prototype.drawBackground = function(ctx) {
 	for(var i in this.game.map) {
 		for(var j in this.game.map[i]) {
-			if(!this.game.mask[i][j]) continue;
 			switch(this.game.map[i][j]) {
 				case 1:
 					ctx.drawImage(img['bloc'], this.game.caseSize*j, this.game.caseSize*i, this.game.caseSize, this.game.caseSize);
@@ -336,6 +316,11 @@ Interface.prototype.drawBackground = function(ctx) {
 					break;
 				default:
 					ctx.drawImage(img['void'], this.game.caseSize*j, this.game.caseSize*i, this.game.caseSize, this.game.caseSize);
+			}
+			if(!this.game.mask[i][j]) {
+				ctx.globalAlpha = 0.5;
+				roundRect(ctx, this.game.caseSize*j, this.game.caseSize*i, this.game.caseSize, this.game.caseSize, 0);
+				ctx.globalAlpha = 1;
 			}
 		}
 	}
@@ -464,7 +449,6 @@ load();
 
 
 var game = new Game();
-game.init();
 var inter = new Interface(game);
 
 
@@ -481,8 +465,12 @@ function smallFont() {
 
 
 function render() {
-	if(game.teamTurn != game.myTeam) {
-		game.IA();
+	if(!game.initialized) {
+		stats.begin();
+		bigFont();
+		ctx.fillText('Waiting for another player...', can.width/2, can.height/2);
+		stats.end();
+		return;
 	}
 	ctx.clearRect(0, 0, can.width, can.height);
 	stats.begin();
@@ -492,17 +480,47 @@ function render() {
 	stats.end();
 };
 
+function coordinates(event){
+	//SO http://stackoverflow.com/questions/55677/how-do-i-get-the-coordinates-of-a-mouse-click-on-a-canvas-element
+	if (event.offsetX !== undefined && event.offsetY !== undefined) { return {x:event.offsetX, y:event.offsetY}; }
+	var totalOffset = (function(can) {
+		var totalOffsetX = 0;
+		var totalOffsetY = 0;
+		var currentElement = can;
+		do {
+			totalOffsetX += currentElement.offsetLeft;
+			totalOffsetY += currentElement.offsetTop;
+		} while(currentElement = currentElement.offsetParent)
+		return {x:totalOffsetX,y:totalOffsetY};
+	})(can);
+
+	return {
+		x:(event.pageX - totalOffset.x),
+		y:(event.pageY - totalOffset.y)
+	};
+}
+
+can.onclick = function(event) {
+	inter.click(coordinates(event));
+};
+
 (function animloop(){
   requestAnimFrame(animloop);
   render();
 })();
 
-return function(x, y) {inter.click(x,y)};
 
-})(ctx, can);
-
-
-$('#myCanvas').click(function(e) {
-	inter(e.offsetX, e.offsetY);
+var socket = io.connect('http://localhost');
+socket.on('init', function (data) {
+	console.log(data);
+	game.applyGame(data.game);
+	/*game.map = data.map;
+	game.init();*/
+	//socket.emit('my other event', { my: 'data' });
+});
+socket.on('action', function(data) {
+	game.applyGame(data.game);
 });
 
+
+})(can);
