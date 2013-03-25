@@ -83,36 +83,6 @@ Game.prototype.applyGame = function(game) {
 	}
 };
 
-Game.prototype.init = function() {
-	this.width = this.map[0].length;
-	this.height = this.map.length;
-
-	this.mask = new Array(this.map.length);
-	for(var i=0;i<this.mask.length;i++) {
-		this.mask[i] = new Array(this.map[i].length);
-	}
-
-	this.players.push(new Player(2, 0, 3, 2, 'D'));
-	this.players.push(new Player(3, 0, 2, 3, 'R'));
-	this.players.push(new Player(1, 1, 13, 5, 'L'));
-	this.players.push(new Player(42, 1, 8, 8, 'U'));
-	
-	this.flags.push(new Flag(0, 1, 1));
-	this.flags.push(new Flag(1, 12, 8)); //Make sure flag index correspond to team & only 1 flag/team
-	
-	
-	this.teams.push(new Team());
-	this.teams.push(new Team());
-	
-	this.initMask();
-	
-	this.teamTurn = 1;
-	this.nextTurn();
-	
-	//this.flags.push(null);
-	this.initialized = true;
-};
-
 Game.prototype.initMask = function() {
 	for(var i in this.mask) {
 		for(var j in this.mask[i]) {
@@ -517,8 +487,6 @@ socket.on('init', function (data) {
 	console.log(data);
 	game.applyGame(data.game);
 	game.initMask();
-	/*game.map = data.map;
-	game.init();*/
 	//socket.emit('my other event', { my: 'data' });
 });
 socket.on('move', function(data) {

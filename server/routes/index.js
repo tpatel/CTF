@@ -63,7 +63,8 @@ function init(io, socket) {
 			room.game.myTeam = 0;
 			clients[room.p1].socket.emit('init', room);
 			room.game.myTeam = 1;
-			clients[room.p2].socket.emit('init', room);
+			console.log(io.sockets.in(roomID).sockets[clients[room.p2].socket.id]);
+			io.sockets.in(roomID).sockets[clients[room.p2].socket.id].emit('init', room);
 			//io.sockets.in(roomID).emit('init', room);
 		}
 	} else {
@@ -82,11 +83,14 @@ function action(io, socket, data) {
 	var room = rooms[roomID];
 	
 	var game = room.game;
+	var myTeam = room.p1 == clientID ? 0 : 1; 
 	
-	game.move(data.id, data.dx, data.dy);
-	
-	//FIXME: need to valide user input !!!
-	
-	socket.broadcast.to(roomID).emit('move', data);
+	if(game.players[data.id] && game.players[data.id].team == myTeam
+			&& game.move(data.id, data.dx, data.dy)) {
+		socket.broadcast.to(roomID).emit('move', data);
+	} else {
+		room.game.myTeam = myTeam;
+		socket.emit('init', room);
+	}
 	
 }

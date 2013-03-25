@@ -79,10 +79,10 @@ Game.prototype.init = function() {
 		this.mask[i] = new Array(this.map[i].length);
 	}
 
-	this.players.push(new Player(2, 0, 4, 2, 'D'));
-	this.players.push(new Player(3, 0, 2, 4, 'R'));
-	this.players.push(new Player(1, 1, 11, 5, 'L'));
-	this.players.push(new Player(42, 1, 9, 7, 'U'));
+	this.players.push(new Player(0, 0, 4, 2, 'D'));
+	this.players.push(new Player(1, 0, 2, 4, 'R'));
+	this.players.push(new Player(2, 1, 11, 5, 'L'));
+	this.players.push(new Player(3, 1, 9, 7, 'U'));
 	
 	this.flags.push(new Flag(0, 1, 1));
 	this.flags.push(new Flag(1, 12, 8)); //Make sure flag index correspond to team & only 1 flag/team
