@@ -217,7 +217,7 @@ Game.prototype.shoot = function(id, idShoot, broadcast) {
 						
 						him.x = him.xspawn;
 						him.y = him.yspawn;
-						him.actionsLeft -= this.actionsLeftMax;
+						him.actionsLeft = -this.actionsLeftMax;
 						
 						me.actionsLeft -= 5;
 						

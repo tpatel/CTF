@@ -108,7 +108,7 @@ function shoot(io, socket, data) {
 	
 	if(game.players[data.id] && game.players[data.id].team == myTeam
 			&& game.shoot(data.id, data.idShoot)) {
-		socket.broadcast.to(roomID).emit('move', data);
+		socket.broadcast.to(roomID).emit('shoot', data);
 	} else {
 		room.game.myTeam = myTeam;
 		socket.emit('init', room);
