@@ -30,6 +30,9 @@ function Player(id, team, x, y, direction) {
 	this.team = team;
 	this.x = x;
 	this.y = y;
+	this.xspawn = x;
+	this.yspawn = y;
+	this.view = 3;
 	this.direction = direction;
 	this.actionsLeft = 0;
 	this.flag = null;
@@ -91,7 +94,7 @@ Game.prototype.initMask = function() {
 	}
 	for(var j in this.players) {
 		if(this.players[j].team == this.myTeam) {
-			this.displayPosition(this.players[j].x, this.players[j].y, 3);
+			this.displayPosition(this.players[j].x, this.players[j].y, this.players[j].view);
 		}
 	}
 	this.displayPosition(this.flags[this.myTeam].xspawn, this.flags[this.myTeam].yspawn, 2);
@@ -140,7 +143,7 @@ Game.prototype.nextTurn = function() {
 	console.log('team turn = ',this.teamTurn);
 	for(var i in this.players) {
 		if(this.players[i].team == this.teamTurn) {
-			this.players[i].actionsLeft = this.actionsLeftMax;
+			this.players[i].actionsLeft += this.actionsLeftMax;
 			console.log(this.players[i].id);
 		} else {
 			this.players[i].actionsLeft = 0;
@@ -165,6 +168,7 @@ Game.prototype.getObject = function(x, y) {
 			return this.players[i];
 		}
 	}
+	return null;
 };
 
 Game.prototype.isCaseFree = function(x, y) {
@@ -200,9 +204,39 @@ Game.prototype.pickFlag = function(player) {
 	}
 };
 
+Game.prototype.shoot = function(id, idShoot, broadcast) {
+	if(id == idShoot) return false;
+	for(var i in this.players) {
+		if(this.players[i].id == id && this.players[i].actionsLeft >= 5) {
+			var me = this.players[i];
+			for(var j in this.players) {
+				if(this.players[j].id == idShoot) {
+					var him = this.players[j];
+					if(Math.abs(me.x-him.x)+Math.abs(me.y-him.y) <= me.view
+							&& me.team != him.team) {
+						
+						him.x = him.xspawn;
+						him.y = him.yspawn;
+						him.actionsLeft -= this.actionsLeftMax;
+						
+						me.actionsLeft -= 5;
+						
+						if(this.isNextTurn()) this.nextTurn();
+						if(broadcast) {
+							socket.emit('shoot', {id:id, idShoot:idShoot});
+						}
+						return true;
+					}
+				}
+			}
+		}
+	}
+	return false;
+};
+
 Game.prototype.move = function(id, dx, dy, broadcast) {
 	for(var i in this.players) {
-		if(this.players[i].id == id && this.players[i].actionsLeft > 0) {
+		if(this.players[i].id == id && this.players[i].actionsLeft >= 1) {
 			var nx = this.players[i].x + dx;
 			var ny = this.players[i].y + dy;
 			if(this.isCaseFree(nx, ny)) {
@@ -258,13 +292,17 @@ Interface.prototype.click = function(source) {
 					break;
 			}
 			//No break here
+			var ennemy = game.getObject(x, y);
+			if(ennemy && this.game.shoot(this.model.id, ennemy.id, true)) { //Try to shoot
+				break;
+			}
+			//No break here
 		case this.NOTHING: case this.OBJECT_SELECTED:
 			this.model = game.getObject(x, y);
 			if(this.model) {
-				if(this.model.team != null//this.model instanceof Player
+				if(this.model.team != null //this.model.team instanceof Player
 						&& this.model.team == this.game.myTeam) {
 					this.state = this.MY_PLAYER_SELECTED;
-					console.log('my player');
 				} else {
 					this.state = this.OBJECT_SELECTED;
 				}
@@ -487,11 +525,12 @@ socket.on('init', function (data) {
 	console.log(data);
 	game.applyGame(data.game);
 	game.initMask();
-	//socket.emit('my other event', { my: 'data' });
 });
 socket.on('move', function(data) {
 	game.move(data.id, data.dx, data.dy);
 });
-
+socket.on('shoot', function(data) {
+	game.shoot(data.id, data.idShoot);
+});
 
 })(can);
