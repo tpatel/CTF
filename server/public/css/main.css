@@ -167,8 +167,9 @@ h1 {
 	border: solid 1px black;
 }
 
-
-
+.center {
+	text-align:center;
+}
 
 
 

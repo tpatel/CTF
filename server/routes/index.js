@@ -64,10 +64,10 @@ function init(io, socket) {
 			room.game = game;
 			//console.log(io.sockets.clients(roomID));
 			room.game.myTeam = 0;
-			clients[room.p1].socket.emit('init', room);
+			clients[room.p1].socket.emit('init', room.game);
 			room.game.myTeam = 1;
 			//console.log(io.sockets.in(roomID).sockets[clients[room.p2].socket.id]);
-			io.sockets.in(roomID).sockets[clients[room.p2].socket.id].emit('init', room);
+			io.sockets.in(roomID).sockets[clients[room.p2].socket.id].emit('init', room.game);
 			//io.sockets.in(roomID).emit('init', room);
 		}
 	} else {
@@ -75,7 +75,7 @@ function init(io, socket) {
 		if(room.game) {
 			var myTeam = room.p1 == clientID ? 0 : 1;
 			room.game.myTeam = myTeam;
-			socket.emit('init', room);
+			socket.emit('init', room.game);
 		}
 	}
 }
@@ -92,8 +92,8 @@ function action(io, socket, data) {
 			&& game.move(data.id, data.dx, data.dy)) {
 		socket.broadcast.to(roomID).emit('move', data);
 	} else {
-		room.game.myTeam = myTeam;
-		socket.emit('init', room);
+		game.myTeam = myTeam;
+		socket.emit('init', game);
 	}
 	
 }
@@ -110,8 +110,8 @@ function shoot(io, socket, data) {
 			&& game.shoot(data.id, data.idShoot)) {
 		socket.broadcast.to(roomID).emit('shoot', data);
 	} else {
-		room.game.myTeam = myTeam;
-		socket.emit('init', room);
+		game.myTeam = myTeam;
+		socket.emit('init', game);
 	}
 	
 }

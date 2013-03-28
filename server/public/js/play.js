@@ -32,7 +32,7 @@ function Player(id, team, x, y, direction) {
 	this.y = y;
 	this.xspawn = x;
 	this.yspawn = y;
-	this.view = 3;
+	this.view = 10;
 	this.direction = direction;
 	this.actionsLeft = 0;
 	this.flag = null;
@@ -217,9 +217,17 @@ Game.prototype.shoot = function(id, idShoot, broadcast) {
 						
 						him.x = him.xspawn;
 						him.y = him.yspawn;
+						if(him.flag) {
+							him.flag.onBase = true;
+							him.flag = null;
+						}
 						him.actionsLeft = -this.actionsLeftMax;
 						
 						me.actionsLeft -= 5;
+						
+						if(me.team == this.myTeam) {
+							this.initMask();
+						}
 						
 						if(this.isNextTurn()) this.nextTurn();
 						if(broadcast) {
@@ -523,7 +531,7 @@ can.onclick = function(event) {
 var socket = io.connect('http://localhost');
 socket.on('init', function (data) {
 	console.log(data);
-	game.applyGame(data.game);
+	game.applyGame(data);
 	game.initMask();
 });
 socket.on('move', function(data) {

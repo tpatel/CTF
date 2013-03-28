@@ -7,7 +7,7 @@ function Player(id, team, x, y, direction) {
 	this.y = y;
 	this.xspawn = x;
 	this.yspawn = y;
-	this.view = 3;
+	this.view = 4;
 	this.direction = direction;
 	this.actionsLeft = 0;
 	this.flag = null;
@@ -189,12 +189,20 @@ Game.prototype.shoot = function(id, idShoot, broadcast) {
 					var him = this.players[j];
 					if(Math.abs(me.x-him.x)+Math.abs(me.y-him.y) <= me.view
 							&& me.team != him.team) {
-						
+						//FIXME: kill everybody being on spawn zone
 						him.x = him.xspawn;
 						him.y = him.yspawn;
+						if(him.flag) {
+							him.flag.onBase = true;
+							him.flag = null;
+						}
 						him.actionsLeft = -this.actionsLeftMax;
 						
 						me.actionsLeft -= 5;
+						
+						if(me.team == this.myTeam) {
+							this.initMask();
+						}
 						
 						if(this.isNextTurn()) this.nextTurn();
 						if(broadcast) {
@@ -246,16 +254,16 @@ Game.prototype.move = function(id, dx, dy, broadcast) {
 
 Game.prototype.init = function() {
 	this.map = [
-				[2,0,0,0,0,0,1,0,0,0,0,0,0,0],
-				[0,3,1,0,0,0,1,0,0,0,0,0,0,0],
-				[0,1,1,0,0,0,0,0,0,0,1,0,1,1],
 				[0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-				[0,0,0,0,0,0,1,1,0,0,0,0,0,0],
-				[0,0,0,0,0,1,1,0,0,0,0,0,0,0],
-				[0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-				[1,1,0,1,0,0,0,0,0,0,0,1,1,0],
-				[0,0,0,0,0,0,1,0,0,0,0,1,3,0],
-				[0,0,0,0,0,0,1,0,0,0,0,0,0,2]
+				[0,3,1,0,0,0,1,1,0,0,0,0,0,0],
+				[0,1,1,0,2,0,1,1,0,0,1,0,1,0],
+				[0,0,0,0,1,0,0,0,0,0,0,0,0,0],
+				[0,0,2,0,0,0,1,1,1,0,0,1,0,0],
+				[0,0,1,0,0,1,1,1,0,0,0,2,0,0],
+				[0,0,0,0,0,0,0,0,0,1,0,0,0,0],
+				[0,1,0,1,0,0,1,1,0,2,0,1,1,0],
+				[0,0,0,0,0,0,1,1,0,0,0,1,3,0],
+				[0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 			];
 	this.width = this.map[0].length;
 	this.height = this.map.length;
