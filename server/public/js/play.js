@@ -74,7 +74,6 @@ function Game() {
 	this.actionsLeftMax = 10;
 	this.turnsAloneMax = 6; //For flag
 	this.teamTurn = -1;
-	this.AIplaying = false;
 	this.mask = null;
 	
 	this.initialized = false;
@@ -139,14 +138,16 @@ Game.prototype.displayPosition = function(x, y, size) {
 }
 
 Game.prototype.nextTurn = function() {
-	this.teamTurn = (this.teamTurn+1)%2;
-	console.log('team turn = ',this.teamTurn);
-	for(var i in this.players) {
-		if(this.players[i].team == this.teamTurn) {
-			this.players[i].actionsLeft += this.actionsLeftMax;
-			console.log(this.players[i].id);
-		} else {
-			this.players[i].actionsLeft = 0;
+	while(this.isNextTurn()) {
+		this.teamTurn = (this.teamTurn+1)%2;
+		console.log('team turn = ',this.teamTurn);
+		for(var i in this.players) {
+			if(this.players[i].team == this.teamTurn) {
+				this.players[i].actionsLeft += this.actionsLeftMax;
+				console.log(this.players[i].id);
+			} else {
+				this.players[i].actionsLeft = 0;
+			}
 		}
 	}
 }
@@ -225,11 +226,11 @@ Game.prototype.shoot = function(id, idShoot, broadcast) {
 						
 						me.actionsLeft -= 5;
 						
-						if(me.team == this.myTeam) {
+						if(him.team == this.myTeam) {
 							this.initMask();
 						}
 						
-						if(this.isNextTurn()) this.nextTurn();
+						this.nextTurn();
 						if(broadcast) {
 							socket.emit('shoot', {id:id, idShoot:idShoot});
 						}
@@ -262,7 +263,7 @@ Game.prototype.move = function(id, dx, dy, broadcast) {
 				this.pickFlag(this.players[i]); //always tries to pick flag
 			
 				this.players[i].actionsLeft--;
-				if(this.isNextTurn()) this.nextTurn();
+				this.nextTurn();
 				
 				if(broadcast) {
 					socket.emit('move', {id:this.players[i].id, dx:dx, dy:dy});
