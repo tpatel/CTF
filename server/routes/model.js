@@ -47,6 +47,7 @@ function Game() {
 	this.myTeam = 1;
 	this.caseSize = 60;
 	this.actionsLeftMax = 10;
+	this.actionsToShoot = 10;
 	this.turnsAloneMax = 6; //For flag
 	this.teamTurn = -1;
 	this.mask = null;
@@ -199,7 +200,7 @@ Game.prototype.shoot = function(id, idShoot, broadcast) {
 						}
 						him.actionsLeft = -this.actionsLeftMax;
 						
-						me.actionsLeft -= 5;
+						me.actionsLeft -= this.actionsToShoot;
 						
 						if(him.team == this.myTeam) {
 							this.initMask();
